@@ -16,7 +16,7 @@ class QuotesSpider(scrapy.Spider):
     def get_images(self, data):
         return data['imagePathList']
     def get_shop_info(self, data):
-        shop_info = []
+        shop_info = {}
         shop_info['shop_url'] = data['storeURL']
         shop_info['shop_location'] = data['detailPageUrl']
         shop_info['shop_followers'] = data['followingNumber']
@@ -145,8 +145,8 @@ class QuotesSpider(scrapy.Spider):
         category_id = self.get_category_id(action_module)
         images = self.get_images(image_module)
         shop_info = self.get_shop_info(store_module)
-        num_of_sold_items = self.get_num_of_sold_items()
-        product_name = self.get_product_name()
+        num_of_sold_items = self.get_num_of_sold_items(title_module)
+        product_name = self.get_product_name(title_module)
 
 
         url = self.get_description_url(description_module)
