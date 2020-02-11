@@ -39,9 +39,11 @@ class QuotesSpider(scrapy.Spider):
     def get_product_name(self, data):
         return data['subject']
 
-    def create_products(self, data):
+    def create_products(self, data, items):
         products = {}
         self.num_of_attr = len(data)
+        product_id = items['product_id']
+        product_id = str(product_id)
 
         for item in data[0]['skuPropertyValues']:
             product = {}
@@ -54,9 +56,8 @@ class QuotesSpider(scrapy.Spider):
             product['attr1_id'] = attr1_id
             product['attr1_value'] = attr1_value
             if self.num_of_attr == 1:
-                sku = 213124
+                sku = product_id + '-' + product['color']
                 products[sku] = product
-
             try:
                 for item in data[1]['skuPropertyValues']:
                     product = {}
@@ -72,7 +73,7 @@ class QuotesSpider(scrapy.Spider):
                     product['size'] = size
                     product['attr2_id'] = attr2_id
                     product['attr2_value'] = attr2_value
-                    sku = '12345' + '-' + product['color'] + '-' + product['size']
+                    sku = product_id + '-' + product['color'] + '-' + product['size']
                     products[sku] = product
             except IndexError:
                 pass
@@ -164,7 +165,7 @@ class QuotesSpider(scrapy.Spider):
         product_id = action_module['productId']
         items['product_id'] = product_id
 
-        products = self.create_products(products_array)
+        products = self.create_products(products_array, items)
         products = self.get_prices(price_array, products)
 
         return products
