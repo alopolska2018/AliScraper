@@ -13,12 +13,9 @@ class QuotesSpider(scrapy.Spider):
 
     def get_category_id(self, data):
         return data['categoryId']
-    def get_description_url(self, data):
-        return data['descriptionUrl']
     def get_images(self, data):
         return data['imagePathList']
-    def get_avail_qty(self, data):
-        return data['totalAvailQuantity']
+
 
     def create_products(self, data):
         products = {}
@@ -122,17 +119,15 @@ class QuotesSpider(scrapy.Spider):
 
     def parse_dict(self, dict, items):
 
-
-        # category_id = self.get_category_id(dict['data'])
-        # description_url = self.get_description_url(self, dict['descriptionModule'])
-        # images = self.get_images(dict['imageModule'])
-        # avail_qty = self.get_avail_qty(dict['data']['actionModule'])
-
         products_array = dict['data']['skuModule']['productSKUPropertyList']
         price_array = dict['data']['skuModule']['skuPriceList']
         description_module = dict['data']['descriptionModule']
         shipping_module = dict['data']['shippingModule']
         action_module = dict['data']['actionModule']
+        image_module = dict['data']['imageModule']
+
+        category_id = self.get_category_id(action_module)
+        images = self.get_images(image_module)
 
         url = self.get_description_url(description_module)
         items['desc_url'] = url
