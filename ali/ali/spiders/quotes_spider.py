@@ -120,8 +120,17 @@ class QuotesSpider(scrapy.Spider):
                                   'Referer': 'https://pl.aliexpress.com/item/{}.html'.format(product_id)}).json()
         return shipping_json
 
-    def check_free_shipping(self, product_id):
-        shipping_json = self.get_shipping_json(product_id)
+    def get_shipping_details(self, shipping_json):
+        shipping_details = []
+        for item in shipping_json['body']['freightResult']:
+            shipping = {}
+            shipping['price_usd'] = item['freightAmount']['value']
+            shipping['company'] = item['company']
+            shipping['eta'] = item['commitDay']
+            shipping_details.append(shipping)
+        return shipping_details
+
+    def check_free_shipping(self, shipping_json):
         shipping_list = shipping_json['body']['freightResult']
         for item in shipping_list:
             price = item['freightAmount']['value']
@@ -188,8 +197,11 @@ class QuotesSpider(scrapy.Spider):
         items['products'] = products
         url = items['desc_url']
         product_id = items['product_id']
-        free_shipping = self.check_free_shipping(product_id)
 
+        shipping_json = self.get_shipping_json(product_id)
+        shipping = self.get_shipping_details(shipping_json)
+
+        # free_shipping = self.check_free_shipping(shipping_json)
 
         yield scrapy.Request(url=url, callback=self.parse_description)
 
