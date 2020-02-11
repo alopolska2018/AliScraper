@@ -114,7 +114,7 @@ class QuotesSpider(scrapy.Spider):
         return products
 
     def get_shipping_json(self, product_id):
-        shipping_json = requests.get('https://pl.aliexpress.com/aeglodetailweb/api/logistics/freight?productId={}'.format(product_id),
+        shipping_json = requests.get('https://pl.aliexpress.com/aeglodetailweb/api/logistics/freight?productId={}&count=1&country=PL'.format(product_id),
                          headers={'Accept': 'application/json',
                                   'Referer': 'https://pl.aliexpress.com/item/{}.html'.format(product_id)}).json()
         return shipping_json
