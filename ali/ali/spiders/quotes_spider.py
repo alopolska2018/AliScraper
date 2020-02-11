@@ -168,6 +168,12 @@ class QuotesSpider(scrapy.Spider):
         product_name = self.get_product_name(title_module)
         products_specs = self.get_product_specs(specs_module)
 
+        items['category_id'] = category_id
+        items['images'] = images
+        items['shop_info'] = shop_info
+        items['num_of_sold_items'] = num_of_sold_items
+        items['product_name'] = product_name
+        items['products_specs'] = products_specs
 
         url = self.get_description_url(description_module)
         items['desc_url'] = url
@@ -202,7 +208,7 @@ class QuotesSpider(scrapy.Spider):
         shipping = self.get_shipping_details(shipping_json)
 
         # free_shipping = self.check_free_shipping(shipping_json)
-
+        print(items)
         yield scrapy.Request(url=url, callback=self.parse_description)
 
 
