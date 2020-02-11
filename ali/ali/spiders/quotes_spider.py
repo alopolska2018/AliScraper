@@ -10,6 +10,8 @@ class QuotesSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(QuotesSpider, self).__init__(*args, **kwargs)
         self.num_of_attr = 0
+        self.items = AliItem()
+
 
     def get_category_id(self, data):
         return data['categoryId']
@@ -39,10 +41,10 @@ class QuotesSpider(scrapy.Spider):
     def get_product_name(self, data):
         return data['subject']
 
-    def create_products(self, data, items):
+    def create_products(self, data):
         products = {}
         self.num_of_attr = len(data)
-        product_id = items['product_id']
+        product_id = self.items['product_id']
         product_id = str(product_id)
 
         for item in data[0]['skuPropertyValues']:
@@ -139,17 +141,17 @@ class QuotesSpider(scrapy.Spider):
         return False
 
     def parse_description(self, response):
-        items = AliItem()
+        # items = AliItem()
         html = response.text
         text = get_text(html)
-        items['description'] = text
-        return items
+        self.items['description'] = text
+        yield self.items
 
     def get_description_url(self, data):
         url = data['descriptionUrl']
         return url
 
-    def parse_dict(self, dict, items):
+    def parse_dict(self, dict):
 
         products_array = dict['data']['skuModule']['productSKUPropertyList']
         price_array = dict['data']['skuModule']['skuPriceList']
@@ -168,19 +170,19 @@ class QuotesSpider(scrapy.Spider):
         product_name = self.get_product_name(title_module)
         products_specs = self.get_product_specs(specs_module)
 
-        items['category_id'] = category_id
-        items['images'] = images
-        items['shop_info'] = shop_info
-        items['num_of_sold_items'] = num_of_sold_items
-        items['product_name'] = product_name
-        items['products_specs'] = products_specs
+        self.items['category_id'] = category_id
+        self.items['images'] = images
+        self.items['shop_info'] = shop_info
+        self.items['num_of_sold_items'] = num_of_sold_items
+        self.items['product_name'] = product_name
+        self.items['products_specs'] = products_specs
 
         url = self.get_description_url(description_module)
-        items['desc_url'] = url
+        self.items['desc_url'] = url
         product_id = action_module['productId']
-        items['product_id'] = product_id
+        self.items['product_id'] = product_id
 
-        products = self.create_products(products_array, items)
+        products = self.create_products(products_array)
         products = self.get_prices(price_array, products)
 
         return products
@@ -193,22 +195,20 @@ class QuotesSpider(scrapy.Spider):
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
-        items = AliItem()
         # selector = scrapy.Selector(text=html, type="html")
         js = response.xpath('/html/body/script[11]/text()').extract_first()
         jstree = js2xml.parse(js)
         dict = js2xml.make_dict(jstree.xpath('//assign[left//identifier[@name="runParams"]]/right/*')[0])
 
-        products = self.parse_dict(dict, items)
-        items['products'] = products
-        url = items['desc_url']
-        product_id = items['product_id']
+        products = self.parse_dict(dict)
+        self.items['products'] = products
+        url = self.items['desc_url']
+        product_id = self.items['product_id']
 
         shipping_json = self.get_shipping_json(product_id)
         shipping = self.get_shipping_details(shipping_json)
 
         # free_shipping = self.check_free_shipping(shipping_json)
-        print(items)
         yield scrapy.Request(url=url, callback=self.parse_description)
 
 
