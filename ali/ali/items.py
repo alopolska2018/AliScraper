@@ -12,3 +12,5 @@ class AliItem(scrapy.Item):
     # define the fields for your item here like:
     products = scrapy.Field()
     desc_url = scrapy.Field()
+    description = scrapy.Field()
+    product_id = scrapy.Field()

@@ -1,6 +1,8 @@
 import scrapy
 import js2xml
 from ..items import AliItem
+from inscriptis import get_text
+import requests
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
@@ -92,9 +94,27 @@ class QuotesSpider(scrapy.Spider):
             products[key]['qty'] = qty
         return products
 
-    # def get_shipping(self, products):
+    def get_shipping_json(self, product_id):
+        shipping_json = requests.get('https://pl.aliexpress.com/aeglodetailweb/api/logistics/freight?productId={}'.format(product_id),
+                         headers={'Accept': 'application/json',
+                                  'Referer': 'https://pl.aliexpress.com/item/{}.html'.format(product_id)}).json()
+        return shipping_json
+
+    def check_free_shipping(self, product_id):
+        shipping_json = self.get_shipping_json(product_id)
+        shipping_list = shipping_json['body']['freightResult']
+        for item in shipping_list:
+            price = item['freightAmount']['value']
+            if price == 0:
+                return True
+        return False
+
     def parse_description(self, response):
-        print(response.text)
+        items = AliItem()
+        html = response.text
+        text = get_text(html)
+        items['description'] = text
+        return items
 
     def get_description_url(self, data):
         url = data['descriptionUrl']
@@ -111,8 +131,13 @@ class QuotesSpider(scrapy.Spider):
         products_array = dict['data']['skuModule']['productSKUPropertyList']
         price_array = dict['data']['skuModule']['skuPriceList']
         description_module = dict['data']['descriptionModule']
+        shipping_module = dict['data']['shippingModule']
+        action_module = dict['data']['actionModule']
+
         url = self.get_description_url(description_module)
         items['desc_url'] = url
+        product_id = action_module['productId']
+        items['product_id'] = product_id
 
         products = self.create_products(products_array)
         products = self.get_prices(price_array, products)
@@ -121,10 +146,9 @@ class QuotesSpider(scrapy.Spider):
 
     def start_requests(self):
         urls = [
-            'https://pl.aliexpress.com/item/32961815719.html'
+            'https://pl.aliexpress.com/item/32958589780.html'
         ]
         for url in urls:
-            # site = pol & c_tp = PLN & x_alimid = 1950647284 & isb = y & ups_u_t = 1614923008279 & region = PL & b_locale = pl_PL & ae_u_p_s = 0
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
@@ -137,7 +161,12 @@ class QuotesSpider(scrapy.Spider):
         products = self.parse_dict(dict, items)
         items['products'] = products
         url = items['desc_url']
-        print(url)
+        product_id = items['product_id']
+        free_shipping = self.check_free_shipping(product_id)
 
 
         yield scrapy.Request(url=url, callback=self.parse_description)
+
+
+        # yield scrapy.Request(url=url2, callback=self.get_shipping, headers = {'Accept': 'application/json',
+        #                           'Referer': 'https://pl.aliexpress.com/item/32969050947.html'} )
