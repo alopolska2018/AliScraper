@@ -10,5 +10,5 @@ import scrapy
 
 class AliItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    products = scrapy.Field()
+    desc_url = scrapy.Field()

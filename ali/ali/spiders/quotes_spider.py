@@ -1,5 +1,6 @@
 import scrapy
 import js2xml
+from ..items import AliItem
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
@@ -65,22 +66,10 @@ class QuotesSpider(scrapy.Spider):
                         val['attr3_value'] = attr3_value
         except IndexError:
                     pass
-
         return products
 
-            # for sad in zip(item[0], item[1]):
-            #     print(sad)
-          # for item in item['skuPropertyValues']:
-          #     variant = {}
-          #     print(item)
-        variant = {}
-        first_property = {}
-        second_property = {}
-        # first_property = data[0]
-        # variant['32132131'] =
     def get_prices(self, price_array, products):
         price_dict = {}
-        # print(price_array)
         for item in price_array:
             sku_attr_id = item['skuPropIds']
             price_dict[sku_attr_id] = item
@@ -104,16 +93,31 @@ class QuotesSpider(scrapy.Spider):
         return products
 
     # def get_shipping(self, products):
+    def parse_description(self, response):
+        print(response.text)
 
-    def parse_dict(self, dict):
+    def get_description_url(self, data):
+        url = data['descriptionUrl']
+        return url
+
+    def parse_dict(self, dict, items):
+
+
         # category_id = self.get_category_id(dict['data'])
         # description_url = self.get_description_url(self, dict['descriptionModule'])
         # images = self.get_images(dict['imageModule'])
         # avail_qty = self.get_avail_qty(dict['data']['actionModule'])
+
         products_array = dict['data']['skuModule']['productSKUPropertyList']
         price_array = dict['data']['skuModule']['skuPriceList']
+        description_module = dict['data']['descriptionModule']
+        url = self.get_description_url(description_module)
+        items['desc_url'] = url
+
         products = self.create_products(products_array)
         products = self.get_prices(price_array, products)
+
+        return products
 
     def start_requests(self):
         urls = [
@@ -124,9 +128,16 @@ class QuotesSpider(scrapy.Spider):
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
+        items = AliItem()
         # selector = scrapy.Selector(text=html, type="html")
         js = response.xpath('/html/body/script[11]/text()').extract_first()
         jstree = js2xml.parse(js)
         dict = js2xml.make_dict(jstree.xpath('//assign[left//identifier[@name="runParams"]]/right/*')[0])
-        self.parse_dict(dict)
-        print(dict)
+
+        products = self.parse_dict(dict, items)
+        items['products'] = products
+        url = items['desc_url']
+        print(url)
+
+
+        yield scrapy.Request(url=url, callback=self.parse_description)
