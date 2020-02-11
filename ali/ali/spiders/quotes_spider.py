@@ -25,6 +25,9 @@ class QuotesSpider(scrapy.Spider):
         shop_info['storeName'] = data['storeName']
         return shop_info
 
+    def get_num_of_sold_items(self, data):
+        return data['tradeCount']
+
     def create_products(self, data):
         products = {}
         self.num_of_attr = len(data)
@@ -134,10 +137,12 @@ class QuotesSpider(scrapy.Spider):
         action_module = dict['data']['actionModule']
         image_module = dict['data']['imageModule']
         store_module = dict['data']['storeModule']
+        title_module = dict['data']['titleModule']
 
         category_id = self.get_category_id(action_module)
         images = self.get_images(image_module)
         shop_info = self.get_shop_info(store_module)
+        num_of_sold_items = self.get_num_of_sold_items()
 
         url = self.get_description_url(description_module)
         items['desc_url'] = url
