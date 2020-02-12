@@ -12,7 +12,6 @@ class QuotesSpider(scrapy.Spider):
         self.num_of_attr = 0
         self.items = AliItem()
 
-
     def get_category_id(self, data):
         return data['categoryId']
     def get_images(self, data):
@@ -189,12 +188,13 @@ class QuotesSpider(scrapy.Spider):
 
     def start_requests(self):
         urls = [
-            'https://pl.aliexpress.com/item/32958589780.html'
+            'https://pl.aliexpress.com/item/4000085515147.html'
         ]
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
+        global shipping
         # selector = scrapy.Selector(text=html, type="html")
         js = response.xpath('/html/body/script[11]/text()').extract_first()
         jstree = js2xml.parse(js)
@@ -207,6 +207,7 @@ class QuotesSpider(scrapy.Spider):
 
         shipping_json = self.get_shipping_json(product_id)
         shipping = self.get_shipping_details(shipping_json)
+
 
         # free_shipping = self.check_free_shipping(shipping_json)
         yield scrapy.Request(url=url, callback=self.parse_description)

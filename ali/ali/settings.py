@@ -14,7 +14,6 @@ BOT_NAME = 'ali'
 SPIDER_MODULES = ['ali.spiders']
 NEWSPIDER_MODULE = 'ali.spiders'
 
-
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'ali (+http://www.yourdomain.com)'
 
@@ -64,9 +63,9 @@ ROBOTSTXT_OBEY = False
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'ali.pipelines.AliPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'ali.pipelines.AliPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
