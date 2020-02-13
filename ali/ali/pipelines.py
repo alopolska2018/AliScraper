@@ -15,5 +15,7 @@ class AliPipeline(object):
         self.collection = db['ali_tb']
 
     def process_item(self, item, spider):
-        self.collection.insert(dict(item))
+        self.collection.find_one_and_update({"product_id": item['product_id']},
+                                       {"$set": {"data": dict(item)}},
+                                       upsert=True)
         return item

@@ -188,7 +188,7 @@ class QuotesSpider(scrapy.Spider):
 
     def start_requests(self):
         urls = [
-            'https://pl.aliexpress.com/item/4000085515147.html'
+            'https://pl.aliexpress.com/item/32958589780.html'
         ]
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
