@@ -175,6 +175,7 @@ class QuotesSpider(scrapy.Spider):
         self.items['num_of_sold_items'] = num_of_sold_items
         self.items['product_name'] = product_name
         self.items['products_specs'] = products_specs
+        self.items['woocommerce_id'] = 0
 
         url = self.get_description_url(description_module)
         self.items['desc_url'] = url

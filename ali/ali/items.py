@@ -20,3 +20,4 @@ class AliItem(scrapy.Item):
     num_of_sold_items = scrapy.Field()
     product_name = scrapy.Field()
     products_specs = scrapy.Field()
+    woocommerce_id = scrapy.Field()
