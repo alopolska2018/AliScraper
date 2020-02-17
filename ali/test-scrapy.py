@@ -5,7 +5,7 @@
 from scrapy.crawler import CrawlerProcess
 
 from ali.spiders.quotes_spider import QuotesSpider
-
+from ali.pipelines import AliPipeline
 if __name__ == "__main__":
     # os.remove('result.json')
 
