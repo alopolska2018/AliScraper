@@ -161,7 +161,13 @@ class QuotesSpider(scrapy.Spider):
 
                     property1 = sku_map[str(sku_property_id1)]
                     property2 = sku_map[str(sku_property_id2)]
-                    sku = product_id + '-' + product[property1] + '-' + product[property2]
+                    if property2 == 'shipping':
+                        sku = product_id + '-' + product[property1]
+                    elif property1 == 'shipping':
+                        sku = product_id + product[property2]
+                    else:
+                        sku = product_id + '-' + product[property1] + '-' + product[property2]
+
                     new_product = {**product}
                     products[sku] = new_product
 
@@ -199,7 +205,7 @@ class QuotesSpider(scrapy.Spider):
                         product = self.parse_length_property(item2, product)
                         product['attr2_value'] = item2['propertyValueId']
                     elif sku_property_id2 == 200007763:
-                        if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                        if not item2['skuPropertySendGoodsCountryCode'] == 'CN':
                             continue
                         product = self.parse_shipping_property(item2, product)
                         product['attr2_value'] = item2['propertyValueId']
@@ -215,7 +221,7 @@ class QuotesSpider(scrapy.Spider):
                             product = self.parse_length_property(item3, product)
                             product['attr3_value'] = item3['propertyValueId']
                         elif sku_property_id3 == 200007763:
-                            if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                            if not item3['skuPropertySendGoodsCountryCode'] == 'CN':
                                 continue
                             product = self.parse_shipping_property(item3, product)
                             product['attr3_value'] = item3['propertyValueId']
@@ -224,7 +230,15 @@ class QuotesSpider(scrapy.Spider):
                         property2 = sku_map[str(sku_property_id2)]
                         property3 = sku_map[str(sku_property_id3)]
 
-                        sku = product_id + '-' + product[property1] + '-' + product[property2] + '-' + product[property3]
+                        if property3 == 'shipping':
+                            sku = product_id + '-' + product[property1] + '-' + product[property2]
+                        elif property2 == 'shipping':
+                            sku = product_id + '-' + product[property1] + '-' + product[property3]
+                        elif property1 == 'shipping':
+                            sku = product_id + '-' + product[property2] + '-' + product[property3]
+                        else:
+                            sku = product_id + '-' + product[property1] + '-' + product[property2] + '-' + product[property3]
+
                         new_product = {**product}
                         products[sku] = new_product
 
@@ -349,7 +363,7 @@ class QuotesSpider(scrapy.Spider):
 
     def start_requests(self):
         cookies = self.get_cookies()
-        urls = ['https://pl.aliexpress.com/item/32867878386.html']
+        urls = ['https://pl.aliexpress.com/item/32981661609.html']
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse, cookies=cookies)
 
