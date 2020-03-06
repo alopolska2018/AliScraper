@@ -5,6 +5,7 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 class AliPipeline(object):
 
@@ -19,4 +20,5 @@ class AliPipeline(object):
                                                 {"$set": { "woocommerce_id": 0,
                                                            "data": item }
                                                  }, upsert=True)
+        # print('Product id: {}. Added to db as: {}'.format(item['product_id']), ObjectId(a['_id']))
         return item

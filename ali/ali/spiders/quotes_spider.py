@@ -3,6 +3,7 @@ import js2xml
 from ..items import AliItem
 from inscriptis import get_text
 import requests
+import os, json
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
@@ -11,6 +12,15 @@ class QuotesSpider(scrapy.Spider):
         super(QuotesSpider, self).__init__(*args, **kwargs)
         self.num_of_attr = 0
         self.items = AliItem()
+    def get_cookies(self):
+        cookies = {}
+        with open('cookies.json') as json_file:
+            data = json.load(json_file)
+            for item in data:
+                name = item['name']
+                value = item['value']
+                cookies[name] = value
+        return cookies
 
     def get_category_id(self, data):
         return data['categoryId']
@@ -40,56 +50,204 @@ class QuotesSpider(scrapy.Spider):
     def get_product_name(self, data):
         return data['subject']
 
+    def parse_colour_property(self, item, product):
+        img_url = item['skuPropertyImagePath']
+        # TODO check if better fields exist for the colour name
+        colour = item['propertyValueDisplayName']
+        product['colour'] = colour
+        product['img_url'] = img_url
+        return product
+
+    def parse_size_property(self, item, product):
+        size = item['propertyValueDisplayName']
+        product['size'] = size
+        return product
+
+    def parse_length_property(self, item, product):
+        length = item['propertyValueDisplayName']
+        product['length'] = length
+        return product
+
+    def parse_shipping_property(self, item, product):
+        # TODO EXCPTION, DO NO CREATE PRODUCT WITHOUT SHIPPNG FROM CHINA
+        send_goods_country_code = item['skuPropertySendGoodsCountryCode']
+        product['shipping'] = send_goods_country_code
+        return product
+
+    def get_all_sku_property_ids(self, data):
+        sku_property_id_list = []
+        for item in data:
+            sku_property_id = item['skuPropertyId']
+            sku_property_id_list.append(sku_property_id)
+        return sku_property_id_list
+
+    def create_sku_property_map(self):
+        sku_map = {}
+        sku_map['14'] = 'colour'
+        sku_map['5'] = 'size'
+        sku_map['200001036'] = 'length'
+        sku_map['200007763'] = 'shipping'
+        return sku_map
+
     def create_products(self, data):
+        import itertools
+
+        # attributes of auction can be in different order such as shipping, colour, size or colour, size, shipping
+        # sku_property_id defines current attr. id 14 = colour, id 5 = size, id 200001036 = lenght, id 200007763 = shipping
         products = {}
         self.num_of_attr = len(data)
         product_id = self.items['product_id']
         product_id = str(product_id)
+        sku_map = self.create_sku_property_map()
 
-        for item in data[0]['skuPropertyValues']:
-            product = {}
-            color = item['propertyValueName']
-            img_url = item['skuPropertyImagePath']
-            attr1_id = data[0]['skuPropertyId']
-            attr1_value = item['propertyValueId']
-            product['color'] = color
-            product['img_url'] = img_url
-            product['attr1_id'] = attr1_id
-            product['attr1_value'] = attr1_value
-            if self.num_of_attr == 1:
-                sku = product_id + '-' + product['color']
+        if self.num_of_attr == 1:
+            sku_property_id1 = data[0]['skuPropertyId']
+            for item in data[0]['skuPropertyValues']:
+                product = {}
+                if sku_property_id1 == 14:
+                    product = self.parse_colour_property(item, product)
+                    product['attr1_value'] = item['propertyValueId']
+                elif sku_property_id1 == 5:
+                    product = self.parse_size_property(item, product)
+                    product['attr1_value'] = item['propertyValueId']
+                elif sku_property_id1 == 200001036:
+                    product = self.parse_length_property(item, product)
+                    product['attr1_value'] = item['propertyValueId']
+                elif sku_property_id1 == 200007763:
+                    if not item['skuPropertySendGoodsCountryCode'] == 'CN':
+                        raise Exception('Product doesn\'t ship from china')
+                    product = self.parse_shipping_property(item, product)
+                    product['attr1_value'] = item['propertyValueId']
+
+                property1 = sku_map[str(sku_property_id1)]
+                sku = product_id + '-' + product[property1]
                 products[sku] = product
-            try:
-                for item in data[1]['skuPropertyValues']:
-                    product = {}
-                    size = item['propertyValueName']
-                    attr2_id = data[1]['skuPropertyId']
-                    attr2_value = item['propertyValueId']
 
-                    product['color'] = color
-                    product['img_url'] = img_url
-                    product['attr1_id'] = attr1_id
-                    product['attr1_value'] = attr1_value
+        if self.num_of_attr == 2:
+            sku_property_id1 = data[0]['skuPropertyId']
+            sku_property_id2 = data[1]['skuPropertyId']
+            for item1 in data[0]['skuPropertyValues']:
+                product = {}
+                if sku_property_id1 == 14:
+                    product = self.parse_colour_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 5:
+                    product = self.parse_size_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 200001036:
+                    product = self.parse_length_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 200007763:
+                    if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                        continue
+                    product = self.parse_shipping_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
 
-                    product['size'] = size
-                    product['attr2_id'] = attr2_id
-                    product['attr2_value'] = attr2_value
-                    sku = product_id + '-' + product['color'] + '-' + product['size']
-                    products[sku] = product
-            except IndexError:
-                pass
-        try:
-                for item in data[2]['skuPropertyValues']:
-                    if item['skuPropertySendGoodsCountryCode'] == 'CN':
-                        attr3_value = item['propertyValueId']
-                    else:
-                        # TODO EXCPTION, DO NO CREATE PRODUCT WITHOUT SHIPPNG FROM CHINA
-                        pass
-                    for key, val in products.items():
-                        val['attr3_value'] = attr3_value
-        except IndexError:
-                    pass
+                for item2 in data[1]['skuPropertyValues']:
+                    if sku_property_id2 == 14:
+                        product = self.parse_colour_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 5:
+                        product = self.parse_size_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 200001036:
+                        product = self.parse_length_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 200007763:
+                        if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                            continue
+                        product = self.parse_shipping_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+
+                    property1 = sku_map[str(sku_property_id1)]
+                    property2 = sku_map[str(sku_property_id2)]
+                    sku = product_id + '-' + product[property1] + '-' + product[property2]
+                    new_product = {**product}
+                    products[sku] = new_product
+
+
+        if self.num_of_attr == 3:
+            sku_property_id1 = data[0]['skuPropertyId']
+            sku_property_id2 = data[1]['skuPropertyId']
+            sku_property_id3 = data[2]['skuPropertyId']
+
+            for item1 in data[0]['skuPropertyValues']:
+                product = {}
+                if sku_property_id1 == 14:
+                    product = self.parse_colour_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 5:
+                    product = self.parse_size_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 200001036:
+                    product = self.parse_length_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+                elif sku_property_id1 == 200007763:
+                    if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                        continue
+                    product = self.parse_shipping_property(item1, product)
+                    product['attr1_value'] = item1['propertyValueId']
+
+                for item2 in data[1]['skuPropertyValues']:
+                    if sku_property_id2 == 14:
+                        product = self.parse_colour_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 5:
+                        product = self.parse_size_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 200001036:
+                        product = self.parse_length_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+                    elif sku_property_id2 == 200007763:
+                        if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                            continue
+                        product = self.parse_shipping_property(item2, product)
+                        product['attr2_value'] = item2['propertyValueId']
+
+                    for item3 in data[2]['skuPropertyValues']:
+                        if sku_property_id3 == 14:
+                            product = self.parse_colour_property(item3, product)
+                            product['attr3_value'] = item3['propertyValueId']
+                        elif sku_property_id3 == 5:
+                            product = self.parse_size_property(item3, product)
+                            product['attr3_value'] = item3['propertyValueId']
+                        elif sku_property_id3 == 200001036:
+                            product = self.parse_length_property(item3, product)
+                            product['attr3_value'] = item3['propertyValueId']
+                        elif sku_property_id3 == 200007763:
+                            if not item1['skuPropertySendGoodsCountryCode'] == 'CN':
+                                continue
+                            product = self.parse_shipping_property(item3, product)
+                            product['attr3_value'] = item3['propertyValueId']
+
+                        property1 = sku_map[str(sku_property_id1)]
+                        property2 = sku_map[str(sku_property_id2)]
+                        property3 = sku_map[str(sku_property_id3)]
+
+                        sku = product_id + '-' + product[property1] + '-' + product[property2] + '-' + product[property3]
+                        new_product = {**product}
+                        products[sku] = new_product
+
         return products
+
+
+            # for item in zip(data[0]['skuPropertyValues'], data[1]['skuPropertyValues'], data[2]['skuPropertyValues']):
+            #     product = {}
+            #     product['sku_property_id'] = sku_property_id1
+            #     if sku_property_id1 == 14:
+            #         product = self.parse_colour_property(item[0], product)
+            #         product['attr1_value'] = item['propertyValueId']
+            #     elif sku_property_id1 == 5:
+            #         product = self.parse_size_property(item[0], product)
+            #         product['attr1_value'] = item['propertyValueId']
+            #     elif sku_property_id1 == 200001036:
+            #         product = self.parse_length_property(item[0], product)
+            #         product['attr1_value'] = item['propertyValueId']
+            #     elif sku_property_id1 == 200007763:
+            #         product = self.parse_shipping_property(item[0], product)
+            #         product['attr1_value'] = item['propertyValueId']
+
+
 
     def get_prices(self, price_array, products):
         price_dict = {}
@@ -105,8 +263,11 @@ class QuotesSpider(scrapy.Spider):
                 price_dict_key = '{},{}'.format(value['attr1_value'], value['attr2_value'])
             elif self.num_of_attr == 3:
                 price_dict_key = '{},{},{}'.format(value['attr1_value'], value['attr2_value'], value['attr3_value'])
+            try:
+                price = price_dict[price_dict_key]['skuVal']['actSkuCalPrice']
+            except KeyError:
+                price = price_dict[price_dict_key]['skuVal']['skuCalPrice']
 
-            price = price_dict[price_dict_key]['skuVal']['actSkuCalPrice']
             qty = price_dict[price_dict_key]['skuVal']['inventory']
             products_price_dict['price'] = price
             products_price_dict['qty'] = qty
@@ -151,7 +312,6 @@ class QuotesSpider(scrapy.Spider):
         return url
 
     def parse_dict(self, dict):
-
         products_array = dict['data']['skuModule']['productSKUPropertyList']
         price_array = dict['data']['skuModule']['skuPriceList']
         description_module = dict['data']['descriptionModule']
@@ -188,11 +348,10 @@ class QuotesSpider(scrapy.Spider):
         return products
 
     def start_requests(self):
-        urls = [
-            'https://pl.aliexpress.com/item/32958589780.html'
-        ]
+        cookies = self.get_cookies()
+        urls = ['https://pl.aliexpress.com/item/32867878386.html']
         for url in urls:
-            yield scrapy.Request(url=url, callback=self.parse)
+            yield scrapy.Request(url=url, callback=self.parse, cookies=cookies)
 
     def parse(self, response):
         global shipping
