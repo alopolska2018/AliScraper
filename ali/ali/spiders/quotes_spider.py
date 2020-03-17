@@ -22,6 +22,13 @@ class QuotesSpider(scrapy.Spider):
                 cookies[name] = value
         return cookies
 
+    def get_urls_from_file(self):
+        urls = []
+        with open('urls_to_scrape.txt', 'r') as f:
+            for line in f:
+                urls.append(line.strip())
+        return urls
+
     def get_category_id(self, data):
         return data['categoryId']
     def get_images(self, data):
@@ -363,7 +370,8 @@ class QuotesSpider(scrapy.Spider):
 
     def start_requests(self):
         cookies = self.get_cookies()
-        urls = ['https://pl.aliexpress.com/item/32981661609.html']
+        # urls = ['https://pl.aliexpress.com/item/32981661609.html']
+        urls = self.get_urls_from_file()
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse, cookies=cookies)
 
