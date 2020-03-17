@@ -52,7 +52,10 @@ class QuotesSpider(scrapy.Spider):
         return specs
 
     def get_num_of_sold_items(self, data):
-        return data['tradeCount']
+        try:
+            return data['tradeCount']
+        except KeyError:
+            return 0
 
     def get_product_name(self, data):
         return data['subject']
@@ -371,7 +374,8 @@ class QuotesSpider(scrapy.Spider):
     def start_requests(self):
         cookies = self.get_cookies()
         # urls = ['https://pl.aliexpress.com/item/32981661609.html']
-        urls = self.get_urls_from_file()
+        # urls = self.get_urls_from_file()
+        urls = ['https://pl.aliexpress.com/item/32868732607.html', 'https://pl.aliexpress.com/item/32897887919.html']
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse, cookies=cookies)
 
