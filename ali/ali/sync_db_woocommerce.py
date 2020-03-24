@@ -35,7 +35,8 @@ class SyncDbWoocommerce():
         for product in unadded_products:
             db_id = product['_id']
             name = product['data']['product_name']
-            aliexpress_link = 'https://pl.aliexpress.com/item/{}.html'.format(product['product_id'])
+            sku = product['product_id']
+            aliexpress_link = 'https://pl.aliexpress.com/item/{}.html'.format(sku)
             #TODO Figure out what price to put in main product
             regular_price = '15'
             description = product['data']['description']
@@ -47,7 +48,7 @@ class SyncDbWoocommerce():
             attributes_properties = self.get_main_product_attributes(variants)
 
 
-            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images)
+            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images, sku)
             woo_id = self.get_woo_id(response)
             self.add_main_woocommerce_id_to_database(woo_id, db_id)
 
@@ -58,7 +59,7 @@ class SyncDbWoocommerce():
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
 
-    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images):
+    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images, sku):
         data = {}
         meta_data_list = []
         meta_data_dict = {}
@@ -73,6 +74,7 @@ class SyncDbWoocommerce():
         images_list.append(image)
 
         data['name'] = name
+        data['sku'] = sku
         data['type'] = 'variable'
         data['regular_price'] = regular_price
         data['description'] = description
@@ -174,9 +176,8 @@ class SyncDbWoocommerce():
             response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
         except requests.exceptions.Timeout:
             print('Timeout occurred while trying to add variant to product id: {}'.format(woo_id))
-
-        print(response)
-
+            pass
+        
     def create_variants_woo(self, woo_id, db_id, variants):
         final_variants_list = []
 
