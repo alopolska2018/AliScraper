@@ -35,7 +35,7 @@ class SyncDbWoocommerce():
         for product in unadded_products:
             db_id = product['_id']
             name = product['data']['product_name']
-            sku = product['product_id']
+            sku = str(product['product_id'])
             aliexpress_link = 'https://pl.aliexpress.com/item/{}.html'.format(sku)
             #TODO Figure out what price to put in main product
             regular_price = '15'
@@ -48,13 +48,13 @@ class SyncDbWoocommerce():
             attributes_properties = self.get_main_product_attributes(variants)
 
 
-            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images, sku)
-            woo_id = self.get_woo_id(response)
-            self.add_main_woocommerce_id_to_database(woo_id, db_id)
+            woo_id = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images, sku)
 
-            self.get_all_variants_attributes(variants)
-            self.create_variants_woo(woo_id, db_id, variants)
-            print('aa')
+            if woo_id:
+                print('Product: {} successfully added to woocommerce with id: {}'.format(aliexpress_link, woo_id))
+                self.add_main_woocommerce_id_to_database(woo_id, db_id)
+                self.get_all_variants_attributes(variants)
+                self.create_variants_woo(woo_id, db_id, variants)
 
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
@@ -84,7 +84,14 @@ class SyncDbWoocommerce():
         # data['categories'] = categories
         # data['images'] = images
         response = self.wcapi.post("products", data).json()
-        return response
+        try:
+            if response['status'] == 'publish':
+                woo_id = self.get_woo_id(response)
+                return woo_id
+        except KeyError:
+            print('Problem occurred while trying to add product: {}'.format(aliexpress_link))
+            return None
+
 
     def test(self):
         variants = self.get_all_variants_of_product('5e70cb5d3364872c3599445a')
@@ -174,6 +181,7 @@ class SyncDbWoocommerce():
         data['create'] = variants
         try:
             response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
+            print('Variants successfully added to product_id: {}'.format(woo_id))
         except requests.exceptions.Timeout:
             print('Timeout occurred while trying to add variant to product id: {}'.format(woo_id))
             pass
@@ -187,7 +195,6 @@ class SyncDbWoocommerce():
             #TODO ADD CREATED VARIANT ID TO DATABASE
             # self.add_variant_woocommerce_id_to_database(woo_id, db_id, key)
             final_variants_list.append(data)
-        print(final_variants_list)
         if len(final_variants_list) > 100:
             raise Exception('Maximum variants for one product is 100')
         else:
