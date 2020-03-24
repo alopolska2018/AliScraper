@@ -19,7 +19,8 @@ class SyncDbWoocommerce():
             consumer_key="ck_28c44a0b2526deeac2791f629e51a394f281b1ad",
             consumer_secret="cs_30e4817bbba122d6cf28c694d14f58f4c061bdbe",
             wp_api=True,
-            version="wc/v3"
+            version="wc/v3",
+            timeout = 30
         )
         self.run()
 
@@ -155,7 +156,11 @@ class SyncDbWoocommerce():
     def add_variant_to_woo_batch(self, variants, woo_id):
         data = {}
         data['create'] = variants
-        response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
+        try:
+            response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
+        except requests.exceptions.Timeout:
+            print('Timeout occurred')
+
         print(response)
 
     def create_variants_woo(self, woo_id, db_id, variants):
