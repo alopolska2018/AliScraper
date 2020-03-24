@@ -55,7 +55,6 @@ class CatSpider(scrapy.Spider):
         self.save_urls_to_file(urls_to_scrape)
 
         next_page = self.url + '&page={}'.format(self.counter)
-        print('next page: {}'.format(next_page))
         if self.counter < 4:
             self.counter += 1
             yield response.follow(next_page, callback=self.parse, cookies=self.cookies)
