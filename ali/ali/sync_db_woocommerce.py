@@ -35,6 +35,7 @@ class SyncDbWoocommerce():
         for product in unadded_products:
             db_id = product['_id']
             name = product['data']['product_name']
+            aliexpress_link = 'https://pl.aliexpress.com/item/{}.html'.format(product['product_id'])
             #TODO Figure out what price to put in main product
             regular_price = '15'
             description = product['data']['description']
@@ -46,7 +47,7 @@ class SyncDbWoocommerce():
             attributes_properties = self.get_main_product_attributes(variants)
 
 
-            response = self.create_main_product_woo(name, regular_price, description, attributes_properties)
+            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link)
             woo_id = self.get_woo_id(response)
             self.add_main_woocommerce_id_to_database(woo_id, db_id)
 
@@ -57,14 +58,21 @@ class SyncDbWoocommerce():
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
 
-    def create_main_product_woo(self, name, regular_price, description, attributes_properties):
+    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link):
         data = {}
+        meta_data_list = []
+        meta_data_dict = {}
+
+        meta_data_dict['key'] = 'aliexpress_link'
+        meta_data_dict['value'] = aliexpress_link
+        meta_data_list.append(meta_data_dict)
 
         data['name'] = name
         data['type'] = 'variable'
         data['regular_price'] = regular_price
         data['description'] = description
         data['attributes'] = attributes_properties
+        data['meta_data'] = meta_data_list
         # data['categories'] = categories
         # data['images'] = images
         response = self.wcapi.post("products", data).json()
