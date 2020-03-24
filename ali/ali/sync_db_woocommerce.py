@@ -20,7 +20,7 @@ class SyncDbWoocommerce():
             consumer_secret="cs_30e4817bbba122d6cf28c694d14f58f4c061bdbe",
             wp_api=True,
             version="wc/v3",
-            timeout = 30
+            timeout = 120
         )
         self.run()
 
@@ -173,7 +173,7 @@ class SyncDbWoocommerce():
         try:
             response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
         except requests.exceptions.Timeout:
-            print('Timeout occurred')
+            print('Timeout occurred while trying to add variant to product id: {}'.format(woo_id))
 
         print(response)
 
