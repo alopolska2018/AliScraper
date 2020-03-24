@@ -185,20 +185,27 @@ class SyncDbWoocommerce():
         except requests.exceptions.Timeout:
             print('Timeout occurred while trying to add variant to product id: {}'.format(woo_id))
             pass
-        
+
     def create_variants_woo(self, woo_id, db_id, variants):
         final_variants_list = []
 
         for key, value in variants.items():
-            attributes = self.get_variant_attributes(value)
-            data = self.create_variant_dict(key, value, attributes)
             #TODO ADD CREATED VARIANT ID TO DATABASE
             # self.add_variant_woocommerce_id_to_database(woo_id, db_id, key)
-            final_variants_list.append(data)
+
+            if value['qty'] > 0:
+                attributes = self.get_variant_attributes(value)
+                data = self.create_variant_dict(key, value, attributes)
+                final_variants_list.append(data)
+            else:
+                print('Variant: {} Can not be created due to availability on the auction (qty:{})'.format(key, value['qty']))
+
         if len(final_variants_list) > 100:
             raise Exception('Maximum variants for one product is 100')
         else:
+            #TODO increase limition for number of variants
             self.add_variant_to_woo_batch(final_variants_list, woo_id)
+
 
 
     def get_main_product_attributes(self, variants):
