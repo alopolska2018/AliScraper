@@ -47,7 +47,7 @@ class SyncDbWoocommerce():
             attributes_properties = self.get_main_product_attributes(variants)
 
 
-            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link)
+            response = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images)
             woo_id = self.get_woo_id(response)
             self.add_main_woocommerce_id_to_database(woo_id, db_id)
 
@@ -58,7 +58,7 @@ class SyncDbWoocommerce():
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
 
-    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link):
+    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images):
         data = {}
         meta_data_list = []
         meta_data_dict = {}
@@ -67,12 +67,18 @@ class SyncDbWoocommerce():
         meta_data_dict['value'] = aliexpress_link
         meta_data_list.append(meta_data_dict)
 
+        images_list = []
+        image = {}
+        image['src'] = images[0]
+        images_list.append(image)
+
         data['name'] = name
         data['type'] = 'variable'
         data['regular_price'] = regular_price
         data['description'] = description
         data['attributes'] = attributes_properties
         data['meta_data'] = meta_data_list
+        data['images'] = images_list
         # data['categories'] = categories
         # data['images'] = images
         response = self.wcapi.post("products", data).json()
