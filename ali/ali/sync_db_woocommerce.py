@@ -10,6 +10,8 @@ import datetime
 class SyncDbWoocommerce():
 
     def __init__(self):
+        #Markup in pln
+        self.MARKUP = 15
         self.client = MongoClient()
         self.client = MongoClient('localhost', 27017)
         db = self.client['ali']
@@ -94,9 +96,7 @@ class SyncDbWoocommerce():
 
 
     def test(self):
-        variants = self.get_all_variants_of_product('5e70cb5d3364872c3599445a')
-        attributes_properties_list = self.get_main_product_attributes(variants)
-        self.create_variants_woo('5e70cb5d3364872c3599445a', '231', variants)
+        pass
 
     def get_all_variants_of_product(self, db_id):
         item = self.collection.find_one({'_id': ObjectId(db_id)})
@@ -157,13 +157,23 @@ class SyncDbWoocommerce():
 
         return attributes
 
+    def get_usd_to_pln_rate(self):
+        response = requests.get('http://api.nbp.pl/api/exchangerates/rates/A/USD/').json()
+        return response['rates'][0]['mid']
+
+    def set_variant_price(self, usd_price):
+        usd_to_pln_rate = self.get_usd_to_pln_rate()
+        pln_price = usd_price * usd_to_pln_rate
+        final_price = pln_price + self.MARKUP
+        return int(final_price)
+
 
     def create_variant_dict(self, sku, variation, attributes):
         data = {}
         image = {}
         image['src'] = variation['img_url']
         #TODO Calculate regular price
-        data['regular_price'] = variation['price']
+        data['regular_price'] = self.set_variant_price(variation['price'])
         data['manage_stock'] = True
         data['stock_quantity'] = variation['qty']
         data['sku'] = sku
