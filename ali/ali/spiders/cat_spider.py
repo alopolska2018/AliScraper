@@ -12,6 +12,7 @@ class CatSpider(scrapy.Spider):
         #where 1 is 1 page that contains 60 products
         self.num_of_result = 1
 
+        self.clear_log()
         self.url = 'https://pl.aliexpress.com/af/category/{}.html?trafficChannel=af&CatId=200010062&ltype=affiliate&isFreeShip=y&isFavorite=y&SortType=total_tranpro_desc&page=1&groupsort=1&isrefine=y'.format(self.cat_id)
         self.cookies = self.get_cookies()
         self.counter = 2
@@ -41,6 +42,10 @@ class CatSpider(scrapy.Spider):
     def save_urls_to_file(self, urls):
         with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\urls_to_scrape.txt', 'a') as f:
             f.writelines("%s\n" % url for url in urls)
+
+    def clear_log(self):
+        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\urls_to_scrape.txt', 'w') as f:
+            pass
 
     def start_requests(self):
         start_url = self.url + '&page=1'
