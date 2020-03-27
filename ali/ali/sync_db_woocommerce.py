@@ -26,7 +26,12 @@ class SyncDbWoocommerce():
         )
         self.run()
 
+    def clear_log(self):
+        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\added_variants.txt', 'w') as f:
+            pass
+
     def run(self):
+        self.clear_log()
         self.check_unadded_products_in_woocommerce()
 
     def get_woo_id(self, response):
@@ -42,6 +47,7 @@ class SyncDbWoocommerce():
             #TODO Figure out what price to put in main product
             regular_price = '15'
             description = product['data']['description']
+            description_url = product['data']['desc_url']
             #TODO Create mapping between ali_categories and woo
             #categories = product['categories']
             images = product['data']['images']
@@ -50,7 +56,7 @@ class SyncDbWoocommerce():
             attributes_properties = self.get_main_product_attributes(variants)
 
 
-            woo_id = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images, sku)
+            woo_id = self.create_main_product_woo(name, regular_price, description, attributes_properties, aliexpress_link, images, sku, description_url)
 
             if woo_id:
                 print('Product: {} successfully added to woocommerce with id: {}'.format(aliexpress_link, woo_id))
@@ -61,14 +67,21 @@ class SyncDbWoocommerce():
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
 
-    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images, sku):
+    def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images, sku, description_url):
         data = {}
         meta_data_list = []
-        meta_data_dict = {}
+        ali_url_dict = {}
+        desc_url_dict = {}
 
-        meta_data_dict['key'] = 'aliexpress_link'
-        meta_data_dict['value'] = aliexpress_link
-        meta_data_list.append(meta_data_dict)
+        ali_url_dict['key'] = 'aliexpress_link'
+        ali_url_dict['value'] = aliexpress_link
+        desc_url_dict['key'] = 'aliexpress_desc_link'
+        desc_url_dict['value'] = description_url
+
+        meta_data_list.append(ali_url_dict)
+        meta_data_list.append(desc_url_dict)
+
+
 
         images_list = []
         image = {}
@@ -163,7 +176,7 @@ class SyncDbWoocommerce():
 
     def set_variant_price(self, usd_price):
         usd_to_pln_rate = self.get_usd_to_pln_rate()
-        pln_price = usd_price * usd_to_pln_rate
+        pln_price = float(usd_price) * usd_to_pln_rate
         final_price = pln_price + self.MARKUP
         return int(final_price)
 
@@ -186,11 +199,20 @@ class SyncDbWoocommerce():
     def add_variant_woocommerce_id_to_database(self, woo_id, db_id, sku):
         self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'data.products.{}.woocommerce_variant_id'.format(sku): woo_id}}, upsert=True)
 
+    def save_added_variants_ids(self, added_variants):
+        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\added_variants.txt', 'a') as f:
+            f.writelines("%s," % variant_id for variant_id in added_variants)
+
     def add_variant_to_woo_batch(self, variants, woo_id):
+        added_variants = []
         data = {}
         data['create'] = variants
         try:
             response = self.wcapi.post("products/{}/variations/batch".format(woo_id), data).json()
+            for item in response['create']:
+                variant_id = item['id']
+                added_variants.append(variant_id)
+            self.save_added_variants_ids(added_variants)
             print('Variants successfully added to product_id: {}'.format(woo_id))
         except requests.exceptions.Timeout:
             print('Timeout occurred while trying to add variant to product id: {}'.format(woo_id))
