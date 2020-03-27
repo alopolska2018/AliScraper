@@ -7,7 +7,12 @@ class CatSpider(scrapy.Spider):
     name = "cat"
     def __init__(self, *args, **kwargs):
         super(CatSpider, self).__init__(*args, **kwargs)
-        self.url = 'https://pl.aliexpress.com/af/category/200003089.html?trafficChannel=af&CatId=200010062&ltype=affiliate&isFreeShip=y&isFavorite=y&SortType=total_tranpro_desc&page=1&groupsort=1&isrefine=y'
+        #Fields for user to manipulate
+        self.cat_id = '200001089'
+        #where 1 is 1 page that contains 60 products
+        self.num_of_result = 1
+
+        self.url = 'https://pl.aliexpress.com/af/category/{}.html?trafficChannel=af&CatId=200010062&ltype=affiliate&isFreeShip=y&isFavorite=y&SortType=total_tranpro_desc&page=1&groupsort=1&isrefine=y'.format(self.cat_id)
         self.cookies = self.get_cookies()
         self.counter = 2
 
@@ -22,7 +27,7 @@ class CatSpider(scrapy.Spider):
         return cookies
 
     def get_ali_url(self, product_id):
-        url = 'http://www.aliexpress.com/item/{}.html'.format(product_id)
+        url = 'https://pl.aliexpress.com/item/{}.html'.format(product_id)
         return url
 
     def get_urls_to_scrape(self, products_json):
@@ -39,7 +44,6 @@ class CatSpider(scrapy.Spider):
 
     def start_requests(self):
         start_url = self.url + '&page=1'
-        print(self.cookies)
         yield scrapy.Request(url=start_url, callback=self.parse, cookies=self.cookies)
 
     def parse(self, response):
@@ -55,7 +59,7 @@ class CatSpider(scrapy.Spider):
         self.save_urls_to_file(urls_to_scrape)
 
         next_page = self.url + '&page={}'.format(self.counter)
-        if self.counter < 4:
+        if self.counter <= self.num_of_result:
             self.counter += 1
             yield response.follow(next_page, callback=self.parse, cookies=self.cookies)
 

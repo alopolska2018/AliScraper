@@ -20,5 +20,5 @@ class AliPipeline(object):
                                                 {"$set": { "woocommerce_id": 0,
                                                            "data": item }
                                                  }, upsert=True)
-        # print('Product id: {}. Added to db as: {}'.format(item['product_id']), ObjectId(a['_id']))
+        print('Product id: {}. Added to db as: {}'.format(item['product_id']), ObjectId(a['_id']))
         return item
