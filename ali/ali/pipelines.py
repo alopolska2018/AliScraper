@@ -6,6 +6,8 @@
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from pymongo.errors import DuplicateKeyError
+
 
 class AliPipeline(object):
 
@@ -16,9 +18,8 @@ class AliPipeline(object):
         self.collection = db['ali_tb']
 
     def process_item(self, item, spider):
-        a = self.collection.find_one_and_update({"product_id": item['product_id']},
-                                                {"$set": { "woocommerce_id": 0,
-                                                           "data": item }
-                                                 }, upsert=True)
-        print('Product id: {}. Added to db as: {}'.format(item['product_id']), ObjectId(a['_id']))
-        return item
+        try:
+            db_id = self.collection.insert_one({"_id": item['product_id'], "woocommerce_id": "0", "data": item}).inserted_id
+            print('Successfully added product_id: {} to database.'.format(db_id))
+        except DuplicateKeyError:
+            print('Unable to add product_id {}. Id already exist in database.'.format(item['product_id']))
