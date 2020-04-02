@@ -6,10 +6,13 @@ import requests
 from requests import Timeout
 import time
 import datetime
+from sympy import Symbol, Eq, solve
 
 class SyncDbWoocommerce():
 
     def __init__(self):
+        #Shipping price for allegro
+        self.ALLEGRO_SHIPPING_PRICE = 30
         #Markup in pln
         self.MARKUP = 15
         self.client = MongoClient()
@@ -174,11 +177,19 @@ class SyncDbWoocommerce():
         response = requests.get('http://api.nbp.pl/api/exchangerates/rates/A/USD/').json()
         return response['rates'][0]['mid']
 
+    def get_pln_price(self, usd_price, usd_to_pln_rate):
+        return float(usd_price) * usd_to_pln_rate
+
+    def get_final_aliexpress_price(self, aliexpress_price_incl_shipping):
+        allegro_price = Symbol('allegro_price')
+        x = ((allegro_price - allegro_price * 0.11 + self.ALLEGRO_SHIPPING_PRICE) - aliexpress_price_incl_shipping) / 1.23
+        allegro_final_price = solve(Eq(x, self.MARKUP))
+        return round(allegro_final_price[0], 2)
+
     def set_variant_price(self, usd_price):
         usd_to_pln_rate = self.get_usd_to_pln_rate()
-        pln_price = float(usd_price) * usd_to_pln_rate
-        final_price = pln_price + self.MARKUP
-        return int(final_price)
+        pln_price = self.get_pln_price(usd_price, usd_to_pln_rate)
+        return self.get_final_aliexpress_price(pln_price)
 
 
     def create_variant_dict(self, sku, variation, attributes):
