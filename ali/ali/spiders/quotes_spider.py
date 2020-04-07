@@ -285,7 +285,7 @@ class QuotesSpider(scrapy.Spider):
             #         product['attr1_value'] = item['propertyValueId']
 
 
-    def get_prices(self, price_array, products):
+    def get_prices(self, price_array, products, lowest_shipping_price):
         price_dict = {}
         for item in price_array:
             sku_attr_id = item['skuPropIds']
@@ -308,7 +308,7 @@ class QuotesSpider(scrapy.Spider):
             products_price_dict['price'] = price
             products_price_dict['qty'] = qty
 
-            products[key]['price'] = price
+            products[key]['price'] = float(price) + lowest_shipping_price
             products[key]['qty'] = qty
         return products
 
@@ -322,11 +322,22 @@ class QuotesSpider(scrapy.Spider):
         shipping_details = []
         for item in shipping_json['body']['freightResult']:
             shipping = {}
-            shipping['price_usd'] = item['freightAmount']['value']
-            shipping['company'] = item['company']
-            shipping['eta'] = item['commitDay']
+            if item['sendGoodsCountry'] == 'CN':
+                shipping['shipping_from'] = item['sendGoodsCountry']
+                shipping['price_usd'] = item['freightAmount']['value']
+                shipping['company'] = item['company']
+                shipping['eta'] = item['commitDay']
+                shipping['tracking'] = item['tracking']
             shipping_details.append(shipping)
         return shipping_details
+
+    def get_lowest_shipping_price_with_tracking(self, shipping_details):
+        price_list = []
+        for item in shipping_details:
+            if item['tracking'] == True:
+                price_list.append(item['price_usd'])
+        lowest_price = min(price for price in price_list)
+        return lowest_price
 
     def check_free_shipping(self, shipping_json):
         shipping_list = shipping_json['body']['freightResult']
@@ -379,7 +390,14 @@ class QuotesSpider(scrapy.Spider):
         self.items['product_id'] = product_id
 
         products = self.create_products(products_array)
-        products = self.get_prices(price_array, products)
+        shipping_json = self.get_shipping_json(product_id)
+        shipping_list = self.get_shipping_details(shipping_json)
+        self.items['shipping_list'] = shipping_list
+        try:
+            lowest_shipping_price = self.get_lowest_shipping_price_with_tracking(shipping_list)
+        except ValueError:
+            print('ERROR: None of the shipping methods include tracking')
+        products = self.get_prices(price_array, products, lowest_shipping_price)
 
         return products
 
@@ -396,12 +414,11 @@ class QuotesSpider(scrapy.Spider):
         dict = js2xml.make_dict(jstree.xpath('//assign[left//identifier[@name="runParams"]]/right/*')[0])
 
         products = self.parse_dict(dict)
+        # product_id = self.items['product_id']
+
         self.items['products'] = products
         url = self.items['desc_url']
-        product_id = self.items['product_id']
 
-        shipping_json = self.get_shipping_json(product_id)
-        shipping = self.get_shipping_details(shipping_json)
 
         # free_shipping = self.check_free_shipping(shipping_json)
         yield scrapy.Request(url=url, callback=self.parse_description)
