@@ -12,6 +12,7 @@ class QuotesSpider(scrapy.Spider):
         super(QuotesSpider, self).__init__(*args, **kwargs)
         self.num_of_attr = 0
         self.items = AliItem()
+
     def get_cookies(self):
         cookies = {}
         with open('cookies.json') as json_file:
@@ -31,8 +32,10 @@ class QuotesSpider(scrapy.Spider):
 
     def get_category_id(self, data):
         return data['categoryId']
+
     def get_images(self, data):
         return data['imagePathList']
+
     def get_shop_info(self, data):
         shop_info = {}
         shop_info['shop_url'] = data['storeURL']
@@ -131,6 +134,10 @@ class QuotesSpider(scrapy.Spider):
 
                 property1 = sku_map[str(sku_property_id1)]
                 sku = product_id + '-' + product[property1]
+
+                if '.' in sku:
+                    sku = sku.replace('.', ',')
+
                 products[sku] = product
 
         if self.num_of_attr == 2:
@@ -177,6 +184,9 @@ class QuotesSpider(scrapy.Spider):
                         sku = product_id + product[property2]
                     else:
                         sku = product_id + '-' + product[property1] + '-' + product[property2]
+
+                    if '.' in sku:
+                        sku = sku.replace('.', ',')
 
                     new_product = {**product}
                     products[sku] = new_product
@@ -249,6 +259,9 @@ class QuotesSpider(scrapy.Spider):
                         else:
                             sku = product_id + '-' + product[property1] + '-' + product[property2] + '-' + product[property3]
 
+                        if '.' in sku:
+                            sku = sku.replace('.', ',')
+
                         new_product = {**product}
                         products[sku] = new_product
 
@@ -270,7 +283,6 @@ class QuotesSpider(scrapy.Spider):
             #     elif sku_property_id1 == 200007763:
             #         product = self.parse_shipping_property(item[0], product)
             #         product['attr1_value'] = item['propertyValueId']
-
 
 
     def get_prices(self, price_array, products):
