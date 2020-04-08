@@ -1,6 +1,5 @@
 from woocommerce import API
 from pymongo import MongoClient
-from bson.objectid import ObjectId
 import json
 import requests
 from requests import Timeout
@@ -18,7 +17,7 @@ class SyncDbWoocommerce():
         self.client = MongoClient()
         self.client = MongoClient('localhost', 27017)
         db = self.client['ali']
-        self.collection = db['ali_tb']
+        self.collection = db['ali']
         self.wcapi = API(
             url="http://server764802.nazwa.pl/wordpress",
             consumer_key="ck_28c44a0b2526deeac2791f629e51a394f281b1ad",
@@ -30,7 +29,7 @@ class SyncDbWoocommerce():
         self.run()
 
     def clear_log(self):
-        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\added_variants.txt', 'w') as f:
+        with open(r'C:\Users\donniebrasco\PycharmProjects\ali_scrapy\ali\added_products_ids.txt', 'w') as f:
             pass
 
     def run(self):
@@ -45,7 +44,7 @@ class SyncDbWoocommerce():
         for product in unadded_products:
             db_id = product['_id']
             name = product['data']['product_name']
-            sku = str(product['product_id'])
+            sku = str(product['data']['product_id'])
             aliexpress_link = 'https://pl.aliexpress.com/item/{}.html'.format(sku)
             #TODO Figure out what price to put in main product
             regular_price = '15'
@@ -63,12 +62,23 @@ class SyncDbWoocommerce():
 
             if woo_id:
                 print('Product: {} successfully added to woocommerce with id: {}'.format(aliexpress_link, woo_id))
+                self.save_added_main_product_id(woo_id)
                 self.add_main_woocommerce_id_to_database(woo_id, db_id)
                 self.get_all_variants_attributes(variants)
                 self.create_variants_woo(woo_id, db_id, variants)
 
     def add_main_woocommerce_id_to_database(self, woo_id, db_id):
-        self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
+        self.collection.find_one_and_update({'_id': db_id}, {'$set': {'woocommerce_id': woo_id}}, upsert=True)
+
+    def get_image_list(self, images):
+        images_list = []
+
+        for item in images:
+            image = {}
+            image['src'] = item
+            images_list.append(image)
+
+        return images_list
 
     def create_main_product_woo(self, name, regular_price, description, attributes_properties, aliexpress_link, images, sku, description_url):
         data = {}
@@ -84,13 +94,6 @@ class SyncDbWoocommerce():
         meta_data_list.append(ali_url_dict)
         meta_data_list.append(desc_url_dict)
 
-
-
-        images_list = []
-        image = {}
-        image['src'] = images[0]
-        images_list.append(image)
-
         data['name'] = name
         data['sku'] = sku
         data['type'] = 'variable'
@@ -98,7 +101,7 @@ class SyncDbWoocommerce():
         data['description'] = description
         data['attributes'] = attributes_properties
         data['meta_data'] = meta_data_list
-        data['images'] = images_list
+        data['images'] = self.get_image_list(images)
         # data['categories'] = categories
         # data['images'] = images
         response = self.wcapi.post("products", data).json()
@@ -110,12 +113,11 @@ class SyncDbWoocommerce():
             print('Problem occurred while trying to add product: {}'.format(aliexpress_link))
             return None
 
-
     def test(self):
         pass
 
     def get_all_variants_of_product(self, db_id):
-        item = self.collection.find_one({'_id': ObjectId(db_id)})
+        item = self.collection.find_one({'_id': db_id})
         return item['data']['products']
 
     def get_all_variants_attributes(self, variants):
@@ -178,9 +180,11 @@ class SyncDbWoocommerce():
         return response['rates'][0]['mid']
 
     def get_pln_price(self, usd_price, usd_to_pln_rate):
-        return float(usd_price) * usd_to_pln_rate
+        return usd_price * usd_to_pln_rate
 
     def get_final_aliexpress_price(self, aliexpress_price_incl_shipping):
+        if aliexpress_price_incl_shipping < 12.44:
+            self.ALLEGRO_SHIPPING_PRICE = 10
         allegro_price = Symbol('allegro_price')
         x = ((allegro_price - allegro_price * 0.11 + self.ALLEGRO_SHIPPING_PRICE) - aliexpress_price_incl_shipping) / 1.23
         allegro_final_price = solve(Eq(x, self.MARKUP))
@@ -191,13 +195,12 @@ class SyncDbWoocommerce():
         pln_price = self.get_pln_price(usd_price, usd_to_pln_rate)
         return self.get_final_aliexpress_price(pln_price)
 
-
     def create_variant_dict(self, sku, variation, attributes):
         data = {}
         image = {}
         image['src'] = variation['img_url']
         #TODO Calculate regular price
-        data['regular_price'] = self.set_variant_price(variation['price'])
+        data['regular_price'] = str(self.set_variant_price(variation['price']))
         data['manage_stock'] = True
         data['stock_quantity'] = variation['qty']
         data['sku'] = sku
@@ -208,11 +211,15 @@ class SyncDbWoocommerce():
         return data
 
     def add_variant_woocommerce_id_to_database(self, woo_id, db_id, sku):
-        self.collection.find_one_and_update({'_id': ObjectId(db_id)}, {'$set': {'data.products.{}.woocommerce_variant_id'.format(sku): woo_id}}, upsert=True)
+        self.collection.find_one_and_update({'_id': db_id}, {'$set': {'data.products.{}.woocommerce_variant_id'.format(sku): woo_id}}, upsert=True)
 
     def save_added_variants_ids(self, added_variants):
-        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\added_variants.txt', 'a') as f:
+        with open(r'C:\Users\donniebrasco\PycharmProjects\ali_scrapy\ali\added_products_ids.txt', 'a') as f:
             f.writelines("%s," % variant_id for variant_id in added_variants)
+
+    def save_added_main_product_id(self, main_product_id):
+        with open(r'C:\Users\donniebrasco\PycharmProjects\ali_scrapy\ali\added_products_ids.txt', 'a') as f:
+            f.write("%s," % main_product_id)
 
     def add_variant_to_woo_batch(self, variants, woo_id):
         added_variants = []
@@ -248,7 +255,6 @@ class SyncDbWoocommerce():
         else:
             #TODO increase limition for number of variants
             self.add_variant_to_woo_batch(final_variants_list, woo_id)
-
 
 
     def get_main_product_attributes(self, variants):
