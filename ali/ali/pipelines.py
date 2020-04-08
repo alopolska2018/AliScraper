@@ -15,11 +15,12 @@ class AliPipeline(object):
         self.client = MongoClient()
         self.client = MongoClient('localhost', 27017)
         db = self.client['ali']
-        self.collection = db['ali_tb']
+        self.collection = db['ali']
 
     def process_item(self, item, spider):
+        print('Processing product_id {}'.format(item['product_id']))
         try:
-            db_id = self.collection.insert_one({"_id": item['product_id'], "woocommerce_id": "0", "data": item}).inserted_id
+            db_id = self.collection.insert_one({"_id": item['product_id'], "woocommerce_id": 0, "data": item}).inserted_id
             print('Successfully added product_id: {} to database.'.format(db_id))
         except DuplicateKeyError:
             print('Unable to add product_id {}. Id already exist in database.'.format(item['product_id']))
