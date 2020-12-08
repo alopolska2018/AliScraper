@@ -8,7 +8,7 @@ class CatSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(CatSpider, self).__init__(*args, **kwargs)
         #Fields for user to manipulate
-        self.cat_id = '200001089'
+        self.cat_id = '200003482'
         #where 1 is 1 page that contains 60 products
         self.num_of_result = 1
 
@@ -40,11 +40,11 @@ class CatSpider(scrapy.Spider):
         return urls_to_scrape
 
     def save_urls_to_file(self, urls):
-        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\urls_to_scrape.txt', 'a') as f:
+        with open('urls_to_scrape.txt', 'a') as f:
             f.writelines("%s\n" % url for url in urls)
 
     def clear_log(self):
-        with open('C:\\Users\\donniebrasco\\PycharmProjects\\ali_scrapy\\ali\\urls_to_scrape.txt', 'w') as f:
+        with open('urls_to_scrape.txt', 'w') as f:
             pass
 
     def start_requests(self):

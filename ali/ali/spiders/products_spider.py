@@ -5,11 +5,11 @@ from inscriptis import get_text
 import requests
 import os, json
 
-class QuotesSpider(scrapy.Spider):
+class ProductSpider(scrapy.Spider):
     name = "quotes"
 
     def __init__(self, *args, **kwargs):
-        super(QuotesSpider, self).__init__(*args, **kwargs)
+        super(ProductSpider, self).__init__(*args, **kwargs)
         self.num_of_attr = 0
         self.items = AliItem()
 

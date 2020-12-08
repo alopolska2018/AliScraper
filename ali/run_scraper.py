@@ -1,0 +1,21 @@
+from ali.ali.spiders.products_spider import ProductSpider
+from ali.ali.spiders.cat_spider import CatSpider
+
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
+import os
+
+
+class Scraper:
+    def __init__(self):
+        settings_file_path = 'ali.ali.settings' # The path seen from root, ie. from main.py
+        os.environ.setdefault('SCRAPY_SETTINGS_MODULE', settings_file_path)
+        self.process = CrawlerProcess(get_project_settings())
+
+    def run_cat_spider(self):
+        self.process.crawl(CatSpider)
+        self.process.start()
+
+    def run_products_spider(self):
+        self.process.crawl(ProductSpider)
+        self.process.start()
