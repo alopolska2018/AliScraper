@@ -5,13 +5,10 @@ from ..items import AliItem
 class CatSpider(scrapy.Spider):
 
     name = "cat"
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cat_id=None, num_of_result=None, *args, **kwargs):
         super(CatSpider, self).__init__(*args, **kwargs)
-        #Fields for user to manipulate
-        self.cat_id = '200003482'
-        #where 1 is 1 page that contains 60 products
-        self.num_of_result = 1
-
+        self.cat_id = cat_id
+        self.num_of_result = num_of_result
         self.clear_log()
         self.url = 'https://pl.aliexpress.com/af/category/{}.html?trafficChannel=af&CatId=200010062&ltype=affiliate&isFreeShip=y&isFavorite=y&SortType=total_tranpro_desc&page=1&groupsort=1&isrefine=y'.format(self.cat_id)
         self.cookies = self.get_cookies()

@@ -12,8 +12,8 @@ class Scraper:
         os.environ.setdefault('SCRAPY_SETTINGS_MODULE', settings_file_path)
         self.process = CrawlerProcess(get_project_settings())
 
-    def run_cat_spider(self):
-        self.process.crawl(CatSpider)
+    def run_cat_spider(self, cat_id, num_of_result):
+        self.process.crawl(CatSpider, cat_id=cat_id, num_of_result=num_of_result)
         self.process.start()
 
     def run_products_spider(self):
